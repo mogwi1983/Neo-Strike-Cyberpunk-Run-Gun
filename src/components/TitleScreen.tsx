@@ -1,7 +1,8 @@
 import React from 'react';
 import { Difficulty } from '../types/game';
 import { WEAPON_CONFIGS } from '../game/weapons';
-import { Play, Gamepad2, Keyboard, Smartphone, Crosshair, Shield, Zap, Sparkles } from 'lucide-react';
+import { Play, Gamepad2, Keyboard, Smartphone, Crosshair, Shield, Zap, Sparkles, Maximize, Share } from 'lucide-react';
+import { isFullscreenSupported, isIOS, isStandaloneApp, toggleFullscreen } from '../game/fullscreen';
 
 interface TitleScreenProps {
   difficulty: Difficulty;
@@ -18,6 +19,9 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
   touchControlsActive,
   onToggleTouchControls,
 }) => {
+  const fullscreenSupported = isFullscreenSupported();
+  const showHomeScreenHint = isIOS() && !isStandaloneApp();
+
   return (
     <div className="relative mx-auto flex w-full max-w-5xl flex-col items-center gap-5 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] select-none sm:gap-6 sm:p-6 md:p-10 landscape-short:gap-2 landscape-short:p-3 landscape-short:pb-[max(0.5rem,env(safe-area-inset-bottom))]">
       {/* Background Ambience */}
@@ -96,6 +100,26 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
               {touchControlsActive ? 'ON' : 'OFF'}
             </button>
           </div>
+          {fullscreenSupported ? (
+            <button
+              type="button"
+              onClick={() => void toggleFullscreen()}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-[10px] font-mono font-bold text-slate-200 md:hidden landscape-short:flex"
+            >
+              <Maximize className="h-3.5 w-3.5" />
+              <span>PLAY FULL SCREEN</span>
+            </button>
+          ) : (
+            showHomeScreenHint && (
+              <p className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-[10px] font-mono text-slate-400">
+                <Share className="h-3.5 w-3.5 shrink-0 text-cyan-400" />
+                <span>
+                  For full screen on iPhone: tap <span className="text-slate-200">Share</span> then{' '}
+                  <span className="text-slate-200">Add to Home Screen</span>
+                </span>
+              </p>
+            )
+          )}
         </div>
 
         {/* Weapon Upgrade Preview Strip */}

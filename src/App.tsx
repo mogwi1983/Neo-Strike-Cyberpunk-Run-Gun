@@ -16,6 +16,7 @@ import { StageClearModal } from './components/StageClearModal';
 import { GameOverModal } from './components/GameOverModal';
 import { VictoryModal } from './components/VictoryModal';
 import { useAppViewport } from './hooks/useAppViewport';
+import { enterFullscreen, isFullscreenActive, isFullscreenSupported, isIOS, isStandaloneApp, toggleFullscreen } from './game/fullscreen';
 
 export default function App() {
   const [screen, setScreen] = useState<GameScreen>('TITLE');
@@ -41,6 +42,17 @@ export default function App() {
   const engineRef = useRef<GameEngine | null>(null);
   const inputRef = useRef<InputManager>(new InputManager());
   const touchControlsUserSetRef = useRef(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const sync = () => setIsFullscreen(isFullscreenActive());
+    document.addEventListener('fullscreenchange', sync);
+    document.addEventListener('webkitfullscreenchange', sync);
+    return () => {
+      document.removeEventListener('fullscreenchange', sync);
+      document.removeEventListener('webkitfullscreenchange', sync);
+    };
+  }, []);
 
   // Auto-detect touch + compact mobile viewports (landscape phones, narrow portrait)
   useEffect(() => {
@@ -114,7 +126,11 @@ export default function App() {
   // Start new game
   const handleStartGame = () => {
     sound.unlock();
+    if (touchControlsActive && isFullscreenSupported()) {
+      void enterFullscreen();
+    }
     if (!canvasRef.current) return;
+    inputRef.current.reset();
 
     // Destroy existing engine if any
     if (engineRef.current) {
@@ -139,12 +155,14 @@ export default function App() {
 
   // Resume paused game
   const handleResume = () => {
+    inputRef.current.reset();
     engineRef.current?.resume();
     setScreen('PLAYING');
   };
 
   // Restart current stage
   const handleRestartStage = () => {
+    inputRef.current.reset();
     engineRef.current?.loadStage(clearedStageId - 1);
     engineRef.current?.start();
     setScreen('PLAYING');
@@ -152,6 +170,7 @@ export default function App() {
 
   // Proceed to next stage
   const handleProceedNextStage = () => {
+    inputRef.current.reset();
     engineRef.current?.loadStage(clearedStageId);
     engineRef.current?.start();
     setScreen('PLAYING');
@@ -160,6 +179,7 @@ export default function App() {
   // Quit to Title
   const handleQuitToTitle = () => {
     engineRef.current?.stop();
+    inputRef.current.reset();
     setScreen('TITLE');
   };
 
@@ -171,8 +191,9 @@ export default function App() {
 
   const viewport = useAppViewport();
   const showTouchControls = screen === 'PLAYING' && touchControlsActive;
-  const touchOverlay = showTouchControls && viewport.isLandscape;
-  const touchBar = showTouchControls && !viewport.isLandscape;
+  const portraitControls = showTouchControls && !viewport.isLandscape;
+  const reserveBrowserChrome = isIOS() && !isStandaloneApp() && !isFullscreen;
+  const showGameChrome = screen === 'PLAYING' || screen === 'PAUSED';
 
   return (
     <div
@@ -184,52 +205,53 @@ export default function App() {
         left: viewport.offsetLeft,
       }}
     >
-      {/* Game viewport — portrait stacks controls below; landscape overlays controls with safe insets */}
+      {/* Portrait with touch controls: HUD, then canvas, then a thumb zone. Otherwise the canvas is centered. */}
       <div
-        className={`relative flex min-h-0 w-full flex-1 bg-black ${
-          touchBar ? 'flex-col items-stretch' : 'items-center justify-center'
+        className={`relative flex w-full bg-black ${
+          portraitControls
+            ? 'shrink-0 justify-center pt-[calc(env(safe-area-inset-top)+4.5rem)]'
+            : 'min-h-0 flex-1 items-center justify-center'
         }`}
       >
-        <div
-          className={`relative flex w-full bg-black ${
-            touchBar
-              ? 'min-h-0 flex-1 items-start justify-center pt-[max(0.25rem,env(safe-area-inset-top))]'
-              : 'h-full max-h-full items-center justify-center'
-          }`}
-        >
+        <div className="relative flex h-full max-h-full w-full items-center justify-center">
           <canvas
             ref={canvasRef}
             width={1280}
             height={720}
-            className="block max-h-full max-w-full aspect-[16/9] w-full object-contain shadow-2xl sm:w-auto"
+            className="block aspect-[16/9] max-h-full max-w-full object-contain shadow-2xl"
             style={{ imageRendering: 'pixelated' }}
           />
 
           {/* Scanlines layer for authentic CRT aesthetic */}
           <div className="scanlines pointer-events-none absolute inset-0 opacity-40" />
         </div>
-
-        {/* HUD (active during PLAYING & PAUSED) */}
-        {(screen === 'PLAYING' || screen === 'PAUSED') && (
-          <HUD
-            player={playerState}
-            boss={bossState}
-            stats={statsState}
-            isMuted={isMuted}
-            onToggleMute={handleToggleMute}
-            onPause={() => {
-              engineRef.current?.pause();
-              setScreen('PAUSED');
-            }}
-          />
-        )}
-
-        {touchOverlay && (
-          <TouchControls input={inputRef.current} visible placement="overlay" />
-        )}
       </div>
 
-      {touchBar && <TouchControls input={inputRef.current} visible placement="bar" />}
+      {portraitControls && (
+        <TouchControls input={inputRef.current} layout="portrait" reserveBrowserChrome={reserveBrowserChrome} />
+      )}
+
+      {showTouchControls && viewport.isLandscape && (
+        <TouchControls input={inputRef.current} layout="landscape" reserveBrowserChrome={reserveBrowserChrome} />
+      )}
+
+      {/* HUD (active during PLAYING & PAUSED) */}
+      {showGameChrome && (
+        <HUD
+          player={playerState}
+          boss={bossState}
+          stats={statsState}
+          isMuted={isMuted}
+          onToggleMute={handleToggleMute}
+          onPause={() => {
+            inputRef.current.reset();
+            engineRef.current?.pause();
+            setScreen('PAUSED');
+          }}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={isFullscreenSupported() ? () => void toggleFullscreen() : undefined}
+        />
+      )}
 
       {/* Screen Modals & Overlays */}
       {screen === 'TITLE' && (

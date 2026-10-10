@@ -14,8 +14,12 @@ function readViewport(): AppViewport {
   }
 
   const vv = window.visualViewport;
-  const width = Math.round(vv?.width ?? window.innerWidth);
-  const height = Math.round(vv?.height ?? window.innerHeight);
+  // Safari can report a visual viewport taller than what's on screen right after
+  // toolbar or orientation changes, so trust the smallest of the available measurements.
+  const width = Math.round(Math.min(vv?.width ?? Infinity, window.innerWidth));
+  const height = Math.round(
+    Math.min(vv?.height ?? Infinity, window.innerHeight, document.documentElement.clientHeight || Infinity)
+  );
 
   return {
     width,

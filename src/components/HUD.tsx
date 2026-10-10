@@ -1,7 +1,7 @@
 import React from 'react';
 import { Player, Boss, GameStats } from '../types/game';
 import { WEAPON_CONFIGS } from '../game/weapons';
-import { Pause, Volume2, VolumeX, Shield, Bomb, Heart } from 'lucide-react';
+import { Pause, Volume2, VolumeX, Shield, Bomb, Heart, Maximize, Minimize } from 'lucide-react';
 import { sound } from '../game/AudioSystem';
 
 interface HUDProps {
@@ -11,6 +11,9 @@ interface HUDProps {
   isMuted: boolean;
   onToggleMute: () => void;
   onPause: () => void;
+  isFullscreen: boolean;
+  /** Omitted when the browser has no fullscreen API (e.g. iPhone Safari). */
+  onToggleFullscreen?: () => void;
 }
 
 export const HUD: React.FC<HUDProps> = ({
@@ -20,6 +23,8 @@ export const HUD: React.FC<HUDProps> = ({
   isMuted,
   onToggleMute,
   onPause,
+  isFullscreen,
+  onToggleFullscreen,
 }) => {
   if (!player) return null;
 
@@ -33,14 +38,14 @@ export const HUD: React.FC<HUDProps> = ({
   const xpPercent = player.weaponTier === 5 ? 100 : Math.min(100, Math.round((currentTierProgress / Math.max(1, currentTierRequired)) * 100));
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-0 z-30 p-2 pt-[max(0.5rem,env(safe-area-inset-top))] select-none sm:p-3">
+    <div className="pointer-events-none absolute inset-x-0 top-0 z-30 select-none p-2 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] pt-[max(0.5rem,env(safe-area-inset-top))] sm:p-3">
       {/* Top Main Status Bar */}
       <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-800/80 bg-slate-950/85 px-2 py-1.5 backdrop-blur-md shadow-2xl landscape-short:gap-1 landscape-short:px-2 landscape-short:py-1 sm:gap-4 sm:px-4 sm:py-2.5">
         {/* Left: Player Health & Lives */}
-        <div className="flex items-center gap-4">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-4">
           {/* Health Bar */}
           <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between gap-3 text-xs font-semibold tracking-wider text-slate-300">
+            <div className="flex items-center justify-between gap-2 text-[10px] sm:gap-3 sm:text-xs font-semibold tracking-wider text-slate-300">
               <span className="flex items-center gap-1 font-mono">
                 <Heart className="h-3.5 w-3.5 text-rose-500 fill-rose-500" />
                 <span>HP</span>
@@ -49,7 +54,7 @@ export const HUD: React.FC<HUDProps> = ({
                 {Math.ceil(player.health)}/{player.maxHealth}
               </span>
             </div>
-            <div className="relative h-2.5 w-32 md:w-44 overflow-hidden rounded-full bg-slate-800">
+            <div className="relative h-2 w-20 sm:h-2.5 sm:w-32 md:w-44 overflow-hidden rounded-full bg-slate-800">
               <div
                 className={`h-full transition-all duration-150 ${
                   hpPercent > 50 ? 'bg-emerald-500' : hpPercent > 25 ? 'bg-amber-500' : 'bg-rose-500'
@@ -63,9 +68,10 @@ export const HUD: React.FC<HUDProps> = ({
           </div>
 
           {/* Lives Count */}
-          <div className="hidden sm:flex items-center gap-1.5 text-xs font-mono font-bold text-slate-400">
-            <span className="text-slate-500">LIVES</span>
-            <div className="flex gap-1">
+          <div className="flex items-center gap-1 text-xs font-mono font-bold text-slate-400 sm:gap-1.5">
+            <span className="hidden text-slate-500 sm:inline">LIVES</span>
+            <span className="tabular-nums text-cyan-300 sm:hidden">x{Math.max(0, player.lives)}</span>
+            <div className="hidden gap-1 sm:flex">
               {Array.from({ length: Math.max(0, player.lives) }).map((_, i) => (
                 <span key={i} className="h-3 w-2 rounded-sm bg-cyan-400 shadow-sm shadow-cyan-400/50" />
               ))}
@@ -76,19 +82,19 @@ export const HUD: React.FC<HUDProps> = ({
           {player.shieldTimer > 0 && (
             <div className="flex items-center gap-1 text-[11px] font-mono font-bold text-cyan-300 animate-pulse">
               <Shield className="h-3.5 w-3.5 text-cyan-400" />
-              <span>SHIELD</span>
+              <span className="hidden sm:inline">SHIELD</span>
             </div>
           )}
         </div>
 
         {/* Center: Active Weapon & Progressive XP */}
-        <div className="flex flex-col items-center gap-1">
-          <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-col items-center gap-1">
+          <div className="flex min-w-0 items-center gap-2">
             <span
-              className="text-xs font-bold uppercase tracking-wider font-cyber"
+              className="truncate text-[10px] sm:text-xs font-bold uppercase tracking-wider font-cyber"
               style={{ color: currentWeapon.color }}
             >
-              LV.{player.weaponTier} {currentWeapon.name}
+              LV.{player.weaponTier}<span className="hidden sm:inline"> {currentWeapon.name}</span>
             </span>
             {player.weaponTier === 5 && (
               <span className="text-[10px] font-mono font-bold text-amber-400">MAX</span>
@@ -96,7 +102,7 @@ export const HUD: React.FC<HUDProps> = ({
           </div>
           {/* XP Gauge */}
           <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-400">
-            <div className="h-1.5 w-24 md:w-36 overflow-hidden rounded-full bg-slate-800">
+            <div className="h-1.5 w-12 sm:w-24 md:w-36 overflow-hidden rounded-full bg-slate-800">
               <div
                 className="h-full transition-all duration-150"
                 style={{
@@ -105,12 +111,12 @@ export const HUD: React.FC<HUDProps> = ({
                 }}
               />
             </div>
-            <span className="tabular-nums">{xpPercent}%</span>
+            <span className="hidden tabular-nums sm:inline">{xpPercent}%</span>
           </div>
         </div>
 
         {/* Right: Score, Bomb Count & Controls */}
-        <div className="flex items-center gap-4">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-4">
           {/* Bombs */}
           <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-amber-400">
             <Bomb className="h-3.5 w-3.5 text-amber-400" />
@@ -119,7 +125,7 @@ export const HUD: React.FC<HUDProps> = ({
 
           {/* Score & Multiplier */}
           <div className="flex flex-col items-end">
-            <span className="text-xs font-mono font-bold text-cyan-400 tabular-nums">
+            <span className="text-[10px] sm:text-xs font-mono font-bold text-cyan-400 tabular-nums">
               {stats.score.toLocaleString()}
             </span>
             {player.multiplier > 1.0 && (
@@ -131,6 +137,16 @@ export const HUD: React.FC<HUDProps> = ({
 
           {/* Audio & Pause Action Buttons (pointer-events-auto) */}
           <div className="pointer-events-auto flex items-center gap-1.5">
+            {onToggleFullscreen && (
+              <button
+                onClick={onToggleFullscreen}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
+                title={isFullscreen ? 'Exit Full Screen' : 'Full Screen'}
+                aria-label="Toggle Full Screen"
+              >
+                {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+              </button>
+            )}
             <button
               onClick={onToggleMute}
               className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
