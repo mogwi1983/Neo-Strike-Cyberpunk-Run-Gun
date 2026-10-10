@@ -39,13 +39,25 @@ export default function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const engineRef = useRef<GameEngine | null>(null);
   const inputRef = useRef<InputManager>(new InputManager());
+  const touchControlsUserSetRef = useRef(false);
 
-  // Auto-detect mobile touch screen capability
+  // Auto-detect touch + compact mobile viewports (landscape phones, narrow portrait)
   useEffect(() => {
-    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    if (isTouch) {
-      setTouchControlsActive(true);
-    }
+    const syncTouchControls = () => {
+      if (touchControlsUserSetRef.current) return;
+      const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const narrowPortrait = window.matchMedia('(max-width: 767px)').matches;
+      const landscapePhone = window.matchMedia('(orientation: landscape) and (max-height: 520px)').matches;
+      setTouchControlsActive(hasTouch || narrowPortrait || landscapePhone);
+    };
+
+    syncTouchControls();
+    window.addEventListener('resize', syncTouchControls);
+    window.addEventListener('orientationchange', syncTouchControls);
+    return () => {
+      window.removeEventListener('resize', syncTouchControls);
+      window.removeEventListener('orientationchange', syncTouchControls);
+    };
   }, []);
 
   // Initialize InputManager once
@@ -156,20 +168,22 @@ export default function App() {
     setIsMuted(muted);
   };
 
+  const showTouchBar = screen === 'PLAYING' && touchControlsActive;
+
   return (
-    <div className="relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden bg-[#06080e] text-slate-100">
-      {/* Active Game Canvas Container */}
-      <div className="relative flex h-full w-full items-center justify-center bg-black">
+    <div className="relative flex h-full min-h-0 w-full flex-col items-stretch overflow-hidden bg-[#06080e] text-slate-100">
+      {/* Game viewport — canvas stays centered in space above touch bar */}
+      <div className="relative flex min-h-0 w-full flex-1 items-center justify-center bg-black">
         <canvas
           ref={canvasRef}
           width={1280}
           height={720}
-          className="h-full w-full max-h-full max-w-full aspect-[16/9] object-contain shadow-2xl"
-          style={{ imageRendering: 'pixelated' }}
+          className="block max-h-full max-w-full aspect-[16/9] object-contain shadow-2xl"
+          style={{ imageRendering: 'pixelated', height: 'auto', width: 'auto' }}
         />
 
         {/* Scanlines layer for authentic CRT aesthetic */}
-        <div className="scanlines absolute inset-0 pointer-events-none opacity-40" />
+        <div className="scanlines pointer-events-none absolute inset-0 opacity-40" />
 
         {/* HUD (active during PLAYING & PAUSED) */}
         {(screen === 'PLAYING' || screen === 'PAUSED') && (
@@ -185,16 +199,14 @@ export default function App() {
             }}
           />
         )}
-
-        {/* On-Screen Mobile Touch Controls */}
-        {screen === 'PLAYING' && (
-          <TouchControls input={inputRef.current} visible={touchControlsActive} />
-        )}
       </div>
+
+      {/* Touch controls in document flow so landscape never clips them */}
+      {showTouchBar && <TouchControls input={inputRef.current} visible />}
 
       {/* Screen Modals & Overlays */}
       {screen === 'TITLE' && (
-        <div className="absolute inset-0 z-50 overflow-y-auto bg-slate-950/95 backdrop-blur-md">
+        <div className="absolute inset-0 z-50 flex flex-col overflow-y-auto overscroll-y-contain bg-slate-950/95 backdrop-blur-md">
           <TitleScreen
             difficulty={difficulty}
             onSelectDifficulty={(diff) => {
@@ -203,7 +215,10 @@ export default function App() {
             }}
             onStartGame={handleStartGame}
             touchControlsActive={touchControlsActive}
-            onToggleTouchControls={() => setTouchControlsActive((prev) => !prev)}
+            onToggleTouchControls={() => {
+              touchControlsUserSetRef.current = true;
+              setTouchControlsActive((prev) => !prev);
+            }}
           />
         </div>
       )}

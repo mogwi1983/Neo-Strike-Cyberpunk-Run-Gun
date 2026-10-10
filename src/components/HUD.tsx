@@ -33,9 +33,9 @@ export const HUD: React.FC<HUDProps> = ({
   const xpPercent = player.weaponTier === 5 ? 100 : Math.min(100, Math.round((currentTierProgress / Math.max(1, currentTierRequired)) * 100));
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-0 z-30 p-3 select-none">
+    <div className="pointer-events-none absolute inset-x-0 top-0 z-30 p-2 pt-[max(0.5rem,env(safe-area-inset-top))] select-none sm:p-3">
       {/* Top Main Status Bar */}
-      <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-800/80 bg-slate-950/85 px-4 py-2.5 backdrop-blur-md shadow-2xl">
+      <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-800/80 bg-slate-950/85 px-2 py-1.5 backdrop-blur-md shadow-2xl landscape-short:gap-1 landscape-short:px-2 landscape-short:py-1 sm:gap-4 sm:px-4 sm:py-2.5">
         {/* Left: Player Health & Lives */}
         <div className="flex items-center gap-4">
           {/* Health Bar */}
