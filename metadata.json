@@ -1,0 +1,6 @@
+{
+  "name": "Neo-Strike: Cyberpunk Run & Gun",
+  "description": "Fast-paced retro Contra-style 2D platformer featuring progressive weapon leveling, multi-stage boss campaign, and multi-input controls.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
