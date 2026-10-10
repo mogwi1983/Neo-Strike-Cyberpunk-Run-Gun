@@ -15,6 +15,7 @@ import { PauseModal } from './components/PauseModal';
 import { StageClearModal } from './components/StageClearModal';
 import { GameOverModal } from './components/GameOverModal';
 import { VictoryModal } from './components/VictoryModal';
+import { useAppViewport } from './hooks/useAppViewport';
 
 export default function App() {
   const [screen, setScreen] = useState<GameScreen>('TITLE');
@@ -168,22 +169,45 @@ export default function App() {
     setIsMuted(muted);
   };
 
-  const showTouchBar = screen === 'PLAYING' && touchControlsActive;
+  const viewport = useAppViewport();
+  const showTouchControls = screen === 'PLAYING' && touchControlsActive;
+  const touchOverlay = showTouchControls && viewport.isLandscape;
+  const touchBar = showTouchControls && !viewport.isLandscape;
 
   return (
-    <div className="relative flex h-full min-h-0 w-full flex-col items-stretch overflow-hidden bg-[#06080e] text-slate-100">
-      {/* Game viewport — canvas stays centered in space above touch bar */}
-      <div className="relative flex min-h-0 w-full flex-1 items-center justify-center bg-black">
-        <canvas
-          ref={canvasRef}
-          width={1280}
-          height={720}
-          className="block max-h-full max-w-full aspect-[16/9] object-contain shadow-2xl"
-          style={{ imageRendering: 'pixelated', height: 'auto', width: 'auto' }}
-        />
+    <div
+      className="fixed z-0 flex flex-col overflow-hidden bg-[#06080e] text-slate-100"
+      style={{
+        width: viewport.width,
+        height: viewport.height,
+        top: viewport.offsetTop,
+        left: viewport.offsetLeft,
+      }}
+    >
+      {/* Game viewport — portrait stacks controls below; landscape overlays controls with safe insets */}
+      <div
+        className={`relative flex min-h-0 w-full flex-1 bg-black ${
+          touchBar ? 'flex-col items-stretch' : 'items-center justify-center'
+        }`}
+      >
+        <div
+          className={`relative flex w-full bg-black ${
+            touchBar
+              ? 'min-h-0 flex-1 items-start justify-center pt-[max(0.25rem,env(safe-area-inset-top))]'
+              : 'h-full max-h-full items-center justify-center'
+          }`}
+        >
+          <canvas
+            ref={canvasRef}
+            width={1280}
+            height={720}
+            className="block max-h-full max-w-full aspect-[16/9] w-full object-contain shadow-2xl sm:w-auto"
+            style={{ imageRendering: 'pixelated' }}
+          />
 
-        {/* Scanlines layer for authentic CRT aesthetic */}
-        <div className="scanlines pointer-events-none absolute inset-0 opacity-40" />
+          {/* Scanlines layer for authentic CRT aesthetic */}
+          <div className="scanlines pointer-events-none absolute inset-0 opacity-40" />
+        </div>
 
         {/* HUD (active during PLAYING & PAUSED) */}
         {(screen === 'PLAYING' || screen === 'PAUSED') && (
@@ -199,10 +223,13 @@ export default function App() {
             }}
           />
         )}
+
+        {touchOverlay && (
+          <TouchControls input={inputRef.current} visible placement="overlay" />
+        )}
       </div>
 
-      {/* Touch controls in document flow so landscape never clips them */}
-      {showTouchBar && <TouchControls input={inputRef.current} visible />}
+      {touchBar && <TouchControls input={inputRef.current} visible placement="bar" />}
 
       {/* Screen Modals & Overlays */}
       {screen === 'TITLE' && (
