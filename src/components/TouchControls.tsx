@@ -240,7 +240,7 @@ export const TouchControls: React.FC<TouchControlsProps> = ({ input, layout, res
 
   return (
     <div
-      className={`flex min-h-0 w-full flex-1 select-none items-center justify-between bg-[#06080e] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-3 ${
+      className={`flex min-h-0 w-full flex-1 select-none items-end justify-between bg-[#06080e] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-3 ${
         reserveBrowserChrome
           ? 'pb-[calc(env(safe-area-inset-bottom)+5.5rem)]'
           : 'pb-[max(1rem,env(safe-area-inset-bottom))]'
